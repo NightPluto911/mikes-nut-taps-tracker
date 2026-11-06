@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nut Taps Tracker</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; background: #f8f9fa; color: #212529; padding: 20px; }
+        .container { max-width: 450px; margin: 0 auto; background: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        h1 { font-size: 1.5rem; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: center; }
+        th { background: #343a40; color: #ffffff; font-weight: 600; }
+        td { font-size: 1.1rem; }
+        .count-cell { font-weight: bold; font-size: 1.2rem; }
+        .login-section { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+        input[type="password"] { padding: 8px 12px; font-size: 1rem; border: 1px solid #ccc; border-radius: 6px; width: 140px; }
+        button { padding: 8px 16px; font-size: 1rem; cursor: pointer; border: none; background: #0d6efd; color: white; border-radius: 6px; font-weight: 500; }
+        button:hover { background: #0b5ed7; }
+        .btn-counter { padding: 4px 12px; font-size: 1.2rem; margin: 0 4px; background: #6c757d; }
+        .btn-counter:hover { background: #5c636a; }
+        .admin-controls { display: none; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; background: #f1f3f5; border-radius: 8px; padding: 15px; }
+        .control-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
+        .date-footer { margin-top: 20px; font-size: 0.9rem; color: #6c757d; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Nut Taps Tracker</h1>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Unobstructed Nut Taps</td>
+                    <td id="count-unobstructed" class="count-cell">Loading...</td>
+                </tr>
+                <tr>
+                    <td>Daily Nut Tap Attempts</td>
+                    <td id="count-daily" class="count-cell">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div id="login-section" class="login-section">
+            <input type="password" id="passcode" placeholder="Passcode">
+            <button onclick="unlock()">Unlock</button>
+        </div>
+
+        <div id="admin-controls" class="admin-controls">
+            <p style="margin-top: 0; font-weight: bold;">Update Counts</p>
+            <div class="control-row">
+                <span>Unobstructed:</span>
+                <div>
+                    <button class="btn-counter" onclick="updateCount('unobstructed', -1)">-</button>
+                    <button class="btn-counter" onclick="updateCount('unobstructed', 1)">+</button>
+                </div>
+            </div>
+            <div class="control-row">
+                <span>Daily Attempts:</span>
+                <div>
+                    <button class="btn-counter" onclick="updateCount('daily', -1)">-</button>
+                    <button class="btn-counter" onclick="updateCount('daily', 1)">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="date-footer" id="date">November 6, 2026</div>
+    </div>
+
+    <script>
+        // Set today's date
+        document.getElementById('date').innerText = "Last Updated: " + new Date().toLocaleDateString();
+
+        // Passcode configuration (change '1234' to your preferred passcode)
+        const ADMIN_PASSCODE = '1234';
+
+        // JSONBin Configuration
+        const BIN_ID = 'YOUR_BIN_ID'; // Replace with your JSONBin Bin ID
+        const API_KEY = '$2a$10$YOUR_MASTER_KEY'; // Replace with your JSONBin Master Key or Access Key
+        const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+        let currentData = { unobstructed: 3, daily: 3 };
+
+        // Fetch numbers globally on load
+        async function loadData() {
+            try {
+                const res = await fetch(API_URL + '/latest', {
+                    headers: { 'X-Master-Key': API_KEY }
+                });
+                const result = await res.json();
+                if (result.record) {
+                    currentData = result.record;
+                    render();
+                }
+            } catch (err) {
+                console.error("Error loading data:", err);
+                document.getElementById('count-unobstructed').innerText = '3';
+                document.getElementById('count-daily').innerText = '3';
+            }
+        }
+
+        function render() {
+            document.getElementById('count-unobstructed').innerText = currentData.unobstructed;
+            document.getElementById('count-daily').innerText = currentData.daily;
+        }
+
+        function unlock() {
+            const pass = document.getElementById('passcode').value;
+            if (pass === ADMIN_PASSCODE) {
+                document.getElementById('admin-controls').style.display = 'block';
+                document.getElementById('login-section').style.display = 'none';
+            } else {
+                alert('Incorrect passcode');
+            }
+        }
+
+        async function updateCount(type, change) {
+            currentData[type] = Math.max(0, parseInt(currentData[type]) + change);
+            render();
+
+            // Save new count globally
+            try {
+                await fetch(API_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify(currentData)
+                });
+            } catch (err) {
+                alert('Failed to update online database.');
+            }
+        }
+
+        // Initialize on page load
+        loadData();
+    </script>
+</body>
