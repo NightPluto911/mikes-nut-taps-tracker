@@ -82,29 +82,59 @@
         const ADMIN_PASSCODE = '1234';
 
         // JSONBin Configuration
-        const BIN_ID = 'YOUR_BIN_ID'; // Replace with your JSONBin Bin ID
-        const API_KEY = '$2a$10$YOUR_MASTER_KEY'; // Replace with your JSONBin Master Key or Access Key
-        const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+        const BIN_ID = '6aee63c1ffd5d16053ad9d14'; // Replace with your JSONBin Bin ID
+        const API_KEY = '$2a$10$iVMsbV6TGpVgQ4v/lLJpGOMvpZ7PiXh.1kFTeKYadG8VIpfue74zu'; // Replace with your JSONBin Master Key or Access Key
+        const API_URL = `https://api.jsonbin.io/v3/b/6aee63c1ffd5d16053ad9d14`;
 
         let currentData = { unobstructed: 3, daily: 3 };
 
         // Fetch numbers globally on load
-        async function loadData() {
-            try {
-                const res = await fetch(API_URL + '/latest', {
-                    headers: { 'X-Master-Key': API_KEY }
-                });
-                const result = await res.json();
-                if (result.record) {
-                    currentData = result.record;
-                    render();
+       async function loadData() {
+        try {
+            const res = await fetch(API_URL + '/latest', {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            const result = await res.json();
+            
+            if (result.record) {
+                currentData = result.record;
+                
+                // Get today's date in YYYY-MM-DD format
+                const today = new Date().toISOString().split('T')[0];
+                
+                // Check if the stored date is older than today
+                if (currentData.lastResetDate !== today) {
+                    currentData.daily = 3;                  // Reset daily attempts to 3
+                    currentData.lastResetDate = today;      // Update to today's date
+                    
+                    // Automatically save the reset state back to JSONBin
+                    await saveToCloud();
                 }
-            } catch (err) {
-                console.error("Error loading data:", err);
-                document.getElementById('count-unobstructed').innerText = '3';
-                document.getElementById('count-daily').innerText = '3';
+                
+                render();
             }
+        } catch (err) {
+            console.error("Error loading data:", err);
+            document.getElementById('count-unobstructed').innerText = '3';
+            document.getElementById('count-daily').innerText = '3';
         }
+    }
+    
+    // Helper function to save changes to JSONBin
+    async function saveToCloud() {
+        try {
+            await fetch(API_URL, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY
+                },
+                body: JSON.stringify(currentData)
+            });
+        } catch (err) {
+            console.error('Failed to sync automated reset to cloud.');
+        }
+    }
 
         function render() {
             document.getElementById('count-unobstructed').innerText = currentData.unobstructed;
